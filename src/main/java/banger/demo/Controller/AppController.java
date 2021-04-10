@@ -1,0 +1,81 @@
+package banger.demo.Controller;
+
+import banger.demo.Entity.User;
+import banger.demo.Repo.UserRepo;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import javax.validation.Valid;
+import java.net.URI;
+
+@RestController
+@CrossOrigin(origins = "*",allowedHeaders = "*",methods = {RequestMethod.POST,RequestMethod.GET,RequestMethod.DELETE,RequestMethod.PUT})
+public class AppController {
+
+//    @Autowired
+//    private AuthenticationManager authenticationManager;
+//
+//    @Autowired
+//    private UserDetail userDetailService;
+//
+//    @Autowired
+//    private JwtUtil jwtTokenUtil;
+
+    @Autowired
+    UserRepo userRepo;
+
+
+
+    @PostMapping(value = "/authenticate")
+    public ResponseEntity<?> Login(@RequestBody LoginRequest authenticationRequest) {
+      User customer = new User(authenticationRequest.getUsername(),authenticationRequest.getPassword());
+        User user= userRepo.findByUsername(customer.getUsername());
+        if (user.validatePassword(authenticationRequest.getPassword(), user.getPassword())) {
+            return new ResponseEntity<>(user,HttpStatus.OK);
+        }
+        return new ResponseEntity<>("Please Login again",HttpStatus.OK);
+
+    }
+
+    @PostMapping(value = "/findusername")
+    public ResponseEntity<String> findusername(@Valid @RequestBody SignUpRequest signUpRequest)
+    {
+        String usernameResponse = "NON-EXISTS";
+        if(userRepo.existsByUsername(signUpRequest.getUsername()))
+        {
+            usernameResponse="Username is already taken";
+            return new ResponseEntity<>(usernameResponse,HttpStatus.OK);
+        }
+        return new ResponseEntity<>(usernameResponse,HttpStatus.OK);
+    }
+
+
+
+    @PostMapping("/signup")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody SignUpRequest signUpRequest) {
+
+//        if(customerRepo.existsByUsername(signUpRequest.getUsername())) {
+//            return new ResponseEntity(new APIResponse(false, "Username is already taken!"),
+//                    HttpStatus.BAD_REQUEST);
+//        }
+//        if(customerRepo.existsByEmail(signUpRequest.getEmail())) {
+//            return new ResponseEntity(new APIResponse(false, "Email Address already in use!"),
+//                    HttpStatus.BAD_REQUEST);
+//        }
+
+      User user =new User(signUpRequest.getUsername(),signUpRequest.getEmail(),new BCryptPasswordEncoder().encode(signUpRequest.getPassword()),signUpRequest.getAge(),
+              signUpRequest.getFirstName(),signUpRequest.getLastName(),signUpRequest.getPhone(),signUpRequest.getLicenseNo(),signUpRequest.getNic(),
+              signUpRequest.getBlacklisted(),signUpRequest.getRole());
+        User result = userRepo.save(user);
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentContextPath().path("/SignUp/{result}")
+                .buildAndExpand(result).toUri();
+        return ResponseEntity.created(location).body(new APIResponse(true, "User registered successfully"));
+    }
+
+
+}
