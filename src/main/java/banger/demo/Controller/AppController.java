@@ -50,22 +50,24 @@ public class AppController {
 
       @PostMapping(value = "/authenticate")
       public ResponseEntity<?> createAuthenticationToken(@RequestBody SignUpRequest authenticationRequest) throws Exception {
-        User user=userRepo.findByUsername(authenticationRequest.getUsername());
-        if(user.validatePassword(authenticationRequest.getPassword(),user.getPassword())){
-            try{
+        String response="false";
+          User user=userRepo.findByUsername(authenticationRequest.getUsername());
+        if(user.validatePassword(authenticationRequest.getPassword(),user.getPassword())) {
+            try {
                 authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(),
-                        user.getPassword()));
+                                user.getPassword()));
+                final UserDetails userDetail= userDetailService
+                        .loadUserByUsername(authenticationRequest.getUsername());
+                final String jwt= jwtTokenUtil.generateToken(userDetail);
+                return ResponseEntity.ok(new LoginResponse(jwt));
             }
-            catch (BadCredentialsException exception)
-            {
-                throw  new Exception("Incorrect username and password",exception);
+            catch (BadCredentialsException exception) {
+                throw new Exception("Incorrect username and password", exception);
             }
         }
-        final UserDetails userDetail= userDetailService
-                .loadUserByUsername(authenticationRequest.getUsername());
-        final String jwt= jwtTokenUtil.generateToken(userDetail);
-        return ResponseEntity.ok(new LoginResponse(jwt));
+          return new ResponseEntity<>(response,HttpStatus.BAD_REQUEST);
+
       }
 
 
@@ -97,7 +99,7 @@ public class AppController {
     }
 
     @PostMapping(value = "/checkprofile")
-    public ResponseEntity<?> checkProfile(@Valid @RequestBody LoginRequest Request)
+    public ResponseEntity<?> checkProfile(@Valid @RequestBody SignUpRequest Request)
     {
         String username_response = "NOT_AVAILABLE";
         if(userRepo.existsByUsername(Request.getUsername())){
